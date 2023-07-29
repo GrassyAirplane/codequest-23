@@ -29,4 +29,10 @@ Stage One
 }
 
 Stage 2
-# 
+# Main game loop
+{
+    message: {
+        deleted
+    }
+    time: 0.1
+}
