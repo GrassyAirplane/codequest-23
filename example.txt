@@ -1,0 +1,32 @@
+Stage One
+
+# Word Init
+{
+    message: "some message for the bot"
+    time: "0.1" time to respond
+}
+
+{
+    "message" {
+        your-tank-id : "tank-12"
+        enemy-tank-id: "tank-37"
+    }
+    time: "0.1" time to respond
+}
+
+# All object information
+
+{
+    message: {
+        "deleted_objects": [],
+        "updated_objects": {
+            "tank-12": {
+                position: [x, y]
+            }
+        }
+    }
+    "time": 0.1
+}
+
+Stage 2
+# 
