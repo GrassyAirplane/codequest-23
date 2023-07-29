@@ -89,6 +89,26 @@ class Game:
         self.objects.update(self.current_turn_message["message"]["updated_objects"])
 
         return True
+    
+    # CREATED FUNCTIONS
+
+    def find_powerup(self):
+        """
+        Find existing powerups and return the closest one.
+        """
+        closest_powerup = None
+        min_distance = float('inf')
+        for game_object in self.objects.values():
+            if game_object["type"] == ObjectTypes.POWERUP.value:
+                object_x = game_object["position"][0]
+                object_y = game_object["position"][1]
+                self_x = self.objects[self.tank_id]["position"][0]
+                self_y = self.objects[self.tank_id]["position"][1]
+                distance = math.sqrt(abs(object_x - self_x) ** 2 + abs(object_y - self_y) ** 2)
+                if min_distance > distance:
+                    min_distance = distance
+                    closest_powerup = game_object["position"]
+        return closest_powerup
 
     def find_distance(point_one, point_two):
         return abs(point_one[0] - point_two[0]) + abs(point_one[1]) - abs(point_one[1]) - abs(point_one[1])
@@ -120,13 +140,27 @@ class Game:
         my_response = {}
         
         # Moves towards Enemy
-        if self.last_path_requested is None or self.last_path_requested != enemy_tank_position:
-            my_response = {"path": enemy_tank_position}
-            self.last_path_requested = enemy_tank_position
+        # if self.last_path_requested is None or self.last_path_requested != enemy_tank_position:
+        #     my_response = {"path": enemy_tank_position}
+        #     self.last_path_requested = enemy_tank_position
         
+        # Checking for powerup
+        dest_x = self.width // 2
+        dest_y = self.height // 2
+        powerup = self.find_powerup()
+
+        if powerup is not None:
+            dest_x = powerup[0]
+            dest_y = powerup[1]
+
+        else: 
+            dest_x = enemy_tank_position[0]
+            dest_y = enemy_tank_position[1]
+
         # Updates the Response
         my_response.update({
-            "shoot": self.find_angle(my_tank_position, enemy_tank_position)
+            "shoot": self.find_angle(my_tank_position, enemy_tank_position),
+            "path": [dest_x, dest_y]
         })
 
         # Final Post
