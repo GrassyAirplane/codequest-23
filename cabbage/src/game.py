@@ -48,9 +48,15 @@ class Game:
 
         # Read all the objects and find the boundary objects
         boundaries = []
+
+        #walls
+        self.walls = []
         for game_object in self.objects.values():
             if game_object["type"] == ObjectTypes.BOUNDARY.value:
                 boundaries.append(game_object)
+            # If the game obj is wall
+            if game_object["type"] == ObjectTypes.WALL.value:
+                self.walls.append(game_object["position"])    
 
         # The biggest X and the biggest Y among all Xs and Ys of boundaries must be the top right corner of the map.
 
@@ -90,8 +96,6 @@ class Game:
 
         return True
     
-    # CREATED FUNCTIONS
-
     def find_powerup(self):
         """
         Find existing powerups and return the closest one.
@@ -100,18 +104,20 @@ class Game:
         min_distance = float('inf')
         for game_object in self.objects.values():
             if game_object["type"] == ObjectTypes.POWERUP.value:
-                object_x = game_object["position"][0]
-                object_y = game_object["position"][1]
-                self_x = self.objects[self.tank_id]["position"][0]
-                self_y = self.objects[self.tank_id]["position"][1]
-                distance = math.sqrt(abs(object_x - self_x) ** 2 + abs(object_y - self_y) ** 2)
-                if min_distance > distance:
-                    min_distance = distance
-                    closest_powerup = game_object["position"]
+                # If in boudnary 
+                if self.in_boundary(game_object["position"][0],  game_object["position"][1]):
+                    object_x = game_object["position"][0]
+                    object_y = game_object["position"][1]
+                    self_x = self.objects[self.tank_id]["position"][0]
+                    self_y = self.objects[self.tank_id]["position"][1]
+                    distance = math.sqrt(abs(object_x - self_x) ** 2 + abs(object_y - self_y) ** 2)
+                    if min_distance > distance:
+                        min_distance = distance
+                        closest_powerup = game_object["position"]
         return closest_powerup
 
     def find_distance(point_one, point_two):
-        return abs(point_one[0] - point_two[0]) + abs(point_one[1]) - abs(point_one[1]) - abs(point_one[1])
+        return math.sqrt(abs(point_one[0] - point_two[0]) ** 2 + abs(point_one[1] - point_two[1]) ** 2)
     
     def find_angle(self, mine, enemy):
         x1 = mine[0]
@@ -120,7 +126,54 @@ class Game:
         y2 = enemy[1]
         
         return math.atan2(y2 - y1, x2 - x1) * 180 / math.pi
-        
+
+    def check_clear(self, mine):
+        # Only shoot if enemy is in view
+        pass    
+
+    def bouncing_shot(self):
+        pass
+
+    def are_points_on_line(self, x1, y1, x2, y2, epsilon=1e-6):
+        # Step 1: Calculate the slope (m)
+        if x2 - x1 != 0:
+            m = (y2 - y1) / (x2 - x1)
+        else:
+            m = float('inf')  # Handle vertical lines (infinite slope)
+
+        # Step 2: Calculate the y-intercept (b)
+        b = y1 - m * x1
+
+        # Step 3: Write the equation of the line
+        def line_equation(x):
+            return m * x + b
+
+        # Step 4: Check if any points lie on the line
+        for x, y in self.walls:
+            if abs(y - line_equation(x)) < epsilon:
+                return True
+
+        return False
+
+        # CREATED FUNCTIONS
+    def in_boundary(self, x, y):
+        for game_object in self.objects.values():
+            if game_object["type"] == ObjectTypes.CLOSING_BOUNDARY.value:
+                bounds = game_object
+
+                x_bound_lower = bounds["position"][0][0]
+                x_bound_upper = bounds["position"][2][0]
+                y_bound_lower = bounds["position"][1][1]
+                y_bound_upper = bounds["position"][3][1]
+
+                       # Check for need to dodge   
+                print("mine: " + str(x_bound_lower) + " upper" + str(x_bound_upper) + str(y_bound_lower) + " upper" + str(y_bound_upper), file=sys.stderr)
+
+                if (x >= x_bound_lower and x <= x_bound_upper and y >= y_bound_lower and y <= y_bound_upper):
+                    return True
+
+        return False
+
 
     def respond_to_turn(self):
         """
@@ -149,19 +202,37 @@ class Game:
         dest_y = self.height // 2
         powerup = self.find_powerup()
 
+        # Movement 
         if powerup is not None:
             dest_x = powerup[0]
             dest_y = powerup[1]
+             # Updates Powerup Seeking
+            my_response.update(
+                {
+                    "path": [dest_x, dest_y]
+                }
+            )
 
         else: 
             dest_x = enemy_tank_position[0]
             dest_y = enemy_tank_position[1]
+            # Updates Seeking Enemy
+            my_response.update(
+                {
+                    "path": [dest_x, dest_y]
+                }
+            )
 
-        # Updates the Response
-        my_response.update({
-            "shoot": self.find_angle(my_tank_position, enemy_tank_position),
-            "path": [dest_x, dest_y]
-        })
+        self.in_boundary(1,2)
+
+        # Distance
+        distance = abs(my_tank_position[0] - enemy_tank_position[0]) + abs(my_tank_position[1]) - abs(enemy_tank_position[1])
+
+        if distance < 500 and not self.are_points_on_line(my_tank_position[0], my_tank_position[1], enemy_tank_position[0], enemy_tank_position[1]):
+            # Updates the Response
+            my_response.update({
+                "shoot": self.find_angle(my_tank_position, enemy_tank_position),
+            })
 
         # Final Post
         comms.post_message(my_response)
